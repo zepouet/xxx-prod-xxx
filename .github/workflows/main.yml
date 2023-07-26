@@ -1,0 +1,44 @@
+name: Event on create
+on:
+  create:
+      
+permissions:
+    id-token: write
+    contents: write
+    
+env:
+  REPO_NAME: ${{ github.event.repository.name }}
+  CI_COMMIT_MESSAGE: Initialization Infra Repository post clone
+  CI_COMMIT_AUTHOR: github-actions
+
+jobs:
+    template-then-commit:
+        runs-on: ubuntu-latest
+        steps:
+        - name: Check out the code
+          uses: actions/checkout@v3          
+          with:
+            fetch-depth: 0
+            github-repo-name: ${{ env.REPO_NAME }}
+
+        - name: "Remove resources on create"          
+          shell: bash
+          run: |
+            repo_name=${{ github.event.repository.name }}
+            echo "repo name=[$repo_name]"
+            if [[ "$repo_name" == *"nonprod"* ]]; then 
+              rm  -f .github/workflows/_sharedservices-prod.yml   
+            else
+              rm  -f .github/workflows/_sharedservices-nonprod.yml   
+            fi
+            rm -f .github/workflows/event-on-create.yml   
+
+        # Commit and push all changed files.
+        - name: "Git commit and push"          
+          run: |
+            git config --global user.name "${{ env.CI_COMMIT_AUTHOR }}"
+            git config --global user.email "github-actions@github.com"
+            ls -la .github/workflows/
+            git add .github/workflows/
+            git commit -a -m "${{ env.CI_COMMIT_MESSAGE }}"
+            git push
